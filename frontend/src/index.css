@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@keyframes scaleFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-scaleFade {
+  animation: scaleFade 0.18s ease-out;
+}
+
+.template-minimal {
+  font-family: "Inter", sans-serif;
+  color: #1f2937;
+}
+
+.template-minimal h1 {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.template-minimal h3 {
+  font-size: 16px;
+  margin-top: 16px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+
+.template-modern {
+  font-family: "Poppins", sans-serif;
+  color: #111827;
+}
+
+.template-modern h1 {
+  font-size: 34px;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.template-modern h3 {
+  font-size: 18px;
+  margin-top: 16px;
+  color: #2563eb;
+  border-left: 4px solid #2563eb;
+  padding-left: 8px;
+}
+
+.template-modern p {
+  line-height: 1.5;
+}
+
+.template-classic {
+  font-family: "Georgia", serif;
+  color: #000;
+}
+
+.template-classic h1 {
+  font-size: 30px;
+  font-weight: 700;
+  font-family: "Times New Roman", serif;
+}
+
+.template-classic h3 {
+  font-size: 17px;
+  font-weight: bold;
+  margin-top: 16px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #000;
+  padding-bottom: 3px;
+}
+
+.template-classic p {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.preview-a4 {
+  width: 210mm;
+  min-height: 297mm;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body * {
+    visibility: visible;
+  }
+}
+
+.a4 {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+
+  background: white;
+}
+
+.a4 .wrap-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-wrapper {
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+
+.preview-card {
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.textarea-h28 {
+  min-height: 7rem;
+}
+
+.btn {
+  outline: none;
+}
+
+.pdf-safe {
+  color: #111 !important;
+  background-color: #fff !important;
+}
+
+.pdf-safe * {
+  color: inherit !important;
+  background-color: transparent !important;
+  border-color: #111 !important;
+  box-shadow: none !important;
+}
+
+.pdf-clone-wrapper {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  padding: 16mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: fixed;
+  left: -3000px;
+  top: 0;
+  z-index: 99999;
+}
+
+.input {
+  @apply w-full border px-3 py-2 rounded mb-3;
+}
+
+.btn-primary {
+  @apply bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700;
+}
+
+.btn-secondary {
+  @apply bg-gray-300 text-black px-4 py-2 rounded shadow hover:bg-gray-400;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.slick-slide {
+  padding: 10px;
+}
+.slick-dots li button:before {
+  color: #6b21a8 !important;
+}

@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { downloadResumePDF } from "../../../utils/downloadPDF";
+import { downloadResumePDF } from "../../../utils/downloadPdf.js";
 import {
   CheckCircleIcon,
   ArrowDownTrayIcon,

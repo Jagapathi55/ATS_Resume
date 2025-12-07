@@ -27,17 +27,29 @@ export default function AtsCheck() {
 
   const checkATS = async () => {
     if (!jobDescription.trim()) return alert("Enter Job Description!");
+
     setLoading(true);
 
     try {
-      const res = await api.post("/ats/check", { resumeText, jobDescription });
+      const res = await api.post(
+        "/ats/check",
+        { resumeText, jobDescription },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("ATS RESULT:", res.data);
       setResult(res.data);
     } catch (err) {
-      alert("ATS Check Failed");
-      console.log(err);
+      console.error("FULL ERROR:", err);
+      console.error("SERVER RESPONSE:", err?.response?.data);
+      alert("ATS Check Failed. Open console.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

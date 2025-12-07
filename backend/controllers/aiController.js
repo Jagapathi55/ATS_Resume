@@ -1,43 +1,78 @@
+import Groq from "groq-sdk";
 import dotenv from "dotenv";
 dotenv.config();
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
-});
+const FAST_MODEL = "llama-3.1-8b-instant";
+const SMART_MODEL = "llama-3.3-70b-versatile";
+
+console.log("Models Loaded:", FAST_MODEL, SMART_MODEL);
+
+function cleanAIResponse(text) {
+  return text
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .replace(/`/g, "")
+    .trim();
+}
 
 export const generateSummary = async (req, res) => {
   try {
     const { about } = req.body;
 
-    if (!about) return res.status(400).json({ error: "about text required" });
-
     const prompt = `
-You are a senior resume writer.
+Generate 4 different ATS-friendly professional summaries.
+Each summary must be 3–4 lines.
+Use ONLY this information:
 
-Create a professional summary (3–4 short sentences, < 60 words)
-using ONLY the user input.
-
-USER DATA:
 ${about}
 
-Rules:
-- ATS-friendly
-- Simple language
-- No fake achievements
-- No buzzwords
-- Crisp and natural tone.
+Return ONLY a JSON array of 4 strings.
+NO markdown.
+NO backticks.
+NO explanation.
+ONLY pure JSON like:
+
+[
+  "Summary option 1...",
+  "Summary option 2...",
+  "Summary option 3...",
+  "Summary option 4..."
+]
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const completion = await groq.chat.completions.create({
+      model: FAST_MODEL,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-    res.json({ summary: text });
+    let raw = completion.choices[0].message.content.trim();
+
+    raw = raw
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .replace(/^\s*\[/, "[")
+      .replace(/\]\s*$/, "]")
+      .trim();
+
+    let jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error("No valid JSON array returned by AI");
+    }
+
+    let results = JSON.parse(jsonMatch[0]);
+
+    if (!Array.isArray(results) || results.length < 1) {
+      throw new Error("AI returned invalid summary list");
+    }
+
+    return res.json({ summaries: results });
   } catch (err) {
-    console.error("Gemini Summary Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Summary Error:", err);
+    return res.status(500).json({
+      error: "AI returned invalid JSON",
+    });
   }
 };
 
@@ -45,30 +80,35 @@ export const generateProjectPoints = async (req, res) => {
   try {
     const { project } = req.body;
 
-    if (!project || !project.title)
-      return res.status(400).json({ error: "project object required" });
-
     const prompt = `
-Write EXACTLY 3 one-line bullet points for the project.
+Write EXACTLY 3 bullet points (1 line each).
+Do NOT include any bullet symbols like "-" or "•".
+Return plain text lines only.
 
-PROJECT:
-Title: ${project.title}
-Tech: ${project.tech}
-Description: ${project.description}
-
-Rules:
-- Only use provided details
-- No assumptions
-- Strong action verbs
-- One line per bullet
+Use ONLY:
+${JSON.stringify(project)}
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const completion = await groq.chat.completions.create({
+      model: FAST_MODEL,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-    res.json({ points: text });
+    let text = completion.choices[0].message.content.trim();
+
+    let cleanPoints = text
+      .split("\n")
+      .map((line) =>
+        line
+          .replace(/^[-•●]/, "")
+          .replace(/^\s*[-•●]/, "")
+          .trim()
+      )
+      .filter((l) => l.length > 0);
+
+    res.json({ points: cleanPoints });
   } catch (err) {
-    console.error("Gemini Project Error:", err);
+    console.error("Project Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -77,12 +117,9 @@ export const checkATSScore = async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
-    if (!resumeText || !jobDescription)
-      return res.status(400).json({ error: "Resume & Job required" });
-
     const prompt = `
-Compare RESUME vs JOB DESCRIPTION. 
-Return STRICT JSON:
+Compare resume vs job description.
+Return STRICT JSON ONLY:
 
 {
   "score": number,
@@ -90,22 +127,37 @@ Return STRICT JSON:
   "improvements": []
 }
 
-RESUME:
+Do NOT include \`\`\`, markdown, or code blocks.
+
+Resume:
 ${resumeText}
 
-JOB DESCRIPTION:
+Job:
 ${jobDescription}
 `;
 
-    const result = await model.generateContent(prompt);
-    let text = result.response.text().trim();
-    text = text.replace(/```json|```/g, "");
+    const completion = await groq.chat.completions.create({
+      model: SMART_MODEL,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-    const parsed = JSON.parse(text);
+    let raw = completion.choices[0].message.content.trim();
+    let clean = cleanAIResponse(raw);
 
-    res.json(parsed);
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (err) {
+      console.error("ATS JSON Parse Failed. Raw Output:", raw);
+      return res.status(500).json({
+        error: "AI returned invalid JSON",
+        raw: raw,
+      });
+    }
+
+    return res.json(parsed);
   } catch (err) {
-    console.error("Gemini ATS Error:", err);
+    console.error("ATS Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -114,21 +166,50 @@ export const tailorResume = async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
-    if (!resumeText || !jobDescription)
-      return res.status(400).json({ error: "Resume & JD required" });
-
     const prompt = `
-Rewrite this resume to match the job description.
-Return STRICT JSON:
+You are an ATS-optimized Resume Tailoring Engine.
+
+Rewrite and tailor the user's resume to match the job description.
+
+When generating the SUMMARY:
+- Use ONLY skills, projects, and experience
+- Do NOT include education or certifications
+- Keep it 3–4 lines max
+- Make it achievement-focused and quantified where possible
+- Highlight tools, technologies, and impact
+
+Return ONLY valid JSON in this exact structure:
 
 {
   "personalInfo": {},
-  "summary": "",
-  "experience": [],
-  "projects": [],
+  "summary": "A strong ATS-optimized 3–4 line summary created ONLY from skills, projects, and experience. Do not include personal info or education."
+
+  "experience": [
+    {
+      "title": "",
+      "company": "",
+      "startDate": "",
+      "endDate": "",
+      "bullets": []
+    }
+  ],
+  "projects": [
+    {
+      "name": "",
+      "description": "",
+      "bullets": []
+    }
+  ],
   "skills": [],
-  "education": [],
-  "achievements": []
+  "education": [
+    {
+      "degree": "",
+      "school": "",
+      "year": ""
+    }
+  ],
+  "achievements": [],
+  "certifications": []
 }
 
 Resume:
@@ -138,16 +219,33 @@ Job Description:
 ${jobDescription}
 `;
 
-    const result = await model.generateContent(prompt);
+    const completion = await groq.chat.completions.create({
+      model: SMART_MODEL,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-    let text = result.response.text().trim();
-    text = text.replace(/```json|```/g, "");
+    let aiResponse = completion.choices[0].message.content.trim();
 
-    const json = JSON.parse(text);
+    let clean = aiResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .replace(/`/g, "")
+      .trim();
 
-    res.json(json);
-  } catch (err) {
-    console.error("Tailor Resume Error:", err);
-    res.status(500).json({ error: err.message });
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (err) {
+      console.error("Tailor JSON Parse Failed. Raw:", aiResponse);
+      return res.status(500).json({
+        error: "AI returned invalid JSON",
+        raw: aiResponse,
+      });
+    }
+
+    return res.json(parsed);
+  } catch (error) {
+    console.error("Tailor Error:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };

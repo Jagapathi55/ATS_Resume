@@ -38,11 +38,9 @@ export default function ResumeEditor({
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   const selectedTemplate = searchParams.get("template") || "minimal";
-
   const isNew = !id || id === "new";
 
   const [resumeData, setResumeData] = useState(EMPTY_RESUME);
@@ -57,14 +55,29 @@ export default function ResumeEditor({
   };
 
   useEffect(() => {
-    if (initialData) {
-      setResumeData({ ...initialData, template: selectedTemplate });
-      setLoading(false);
-      return;
+    // ⭐ Load tailored structured resume if available
+    const stored = localStorage.getItem("tailoredResume");
+
+    if (stored) {
+      try {
+        const tailored = JSON.parse(stored);
+
+        setResumeData({
+          ...EMPTY_RESUME,
+          ...tailored,
+          template: selectedTemplate,
+        });
+
+        localStorage.removeItem("tailoredResume");
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.log("Tailored resume parse error:", err);
+      }
     }
 
     if (isNew) {
-      setResumeData({ ...EMPTY_RESUME, template: selectedTemplate });
+      setResumeData((prev) => ({ ...prev, template: selectedTemplate }));
       setLoading(false);
       return;
     }
@@ -73,11 +86,21 @@ export default function ResumeEditor({
       .get(`/resume/${id}`)
       .then((res) => {
         if (!res.data) return navigate("/dashboard");
-        setResumeData(res.data);
+
+        const resume = res.data;
+
+        resume.projects = resume.projects?.map((p) => ({
+          ...p,
+          bullets: Array.isArray(p.bullets)
+            ? p.bullets.map((b) => (typeof b === "string" ? b : ""))
+            : [""],
+        }));
+
+        setResumeData(resume);
         setLoading(false);
       })
       .catch(() => navigate("/dashboard"));
-  }, [id, initialData, selectedTemplate]);
+  }, [id, initialData]);
 
   const saveResume = async () => {
     if (externalSave) return externalSave(resumeData);
@@ -176,9 +199,7 @@ export default function ResumeEditor({
       </div>
 
       <div className="col-span-7 bg-gray-50 p-6 h-screen overflow-y-auto">
-        {/* === TEMPLATE SWITCH + SAVE BUTTON === */}
         <div className="mb-6 flex items-center justify-between">
-          {/* LEFT: Template Switch */}
           <div className="flex gap-3 items-center">
             <span className="font-semibold text-gray-700">
               Change Template:
@@ -187,30 +208,28 @@ export default function ResumeEditor({
             {["minimal", "modern", "elegant"].map((t) => (
               <button
                 key={t}
-                onClick={() => update("template", t)}
-                className={`px-4 py-2 rounded-xl border shadow-sm transition
-            ${
-              resumeData.template === t
-                ? "bg-purple-600 text-white border-purple-600"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
+                onClick={() =>
+                  setResumeData((prev) => ({ ...prev, template: t }))
+                }
+                className={`px-4 py-2 rounded-xl border ${
+                  resumeData.template === t
+                    ? "bg-purple-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
+                }`}
               >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
 
-          {/* RIGHT: SAVE BUTTON */}
           <button
             onClick={saveResume}
-            className="px-6 py-2 rounded-xl bg-green-600 text-white font-medium shadow 
-                 hover:bg-green-700 transition"
+            className="px-6 py-2 bg-green-600 text-white rounded-xl"
           >
             Save
           </button>
         </div>
 
-        {/* === LIVE PREVIEW === */}
         <LivePreview resume={resumeData} />
       </div>
     </div>

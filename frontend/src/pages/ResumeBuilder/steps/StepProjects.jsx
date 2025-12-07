@@ -12,7 +12,18 @@ export default function StepProjects({ data, update, next, back }) {
   const [items, setItems] = useState([]);
   const [loadingIndex, setLoadingIndex] = useState(null);
 
-  useEffect(() => setItems(data.projects || []), [data.projects]);
+  useEffect(() => {
+    setItems(
+      (data.projects || []).map((p) => ({
+        title: p.title || "",
+        tech: p.tech || "",
+        description: p.description || "",
+        bullets: Array.isArray(p.bullets)
+          ? p.bullets.map((b) => b || "")
+          : [""],
+      }))
+    );
+  }, [data.projects]);
 
   const add = () =>
     setItems([
@@ -28,13 +39,13 @@ export default function StepProjects({ data, update, next, back }) {
 
   const change = (i, field, value) => {
     const c = [...items];
-    c[i][field] = value;
+    c[i][field] = value ?? "";
     setItems(c);
   };
 
   const changeBullet = (pi, bi, value) => {
     const updated = [...items];
-    updated[pi].bullets[bi] = value;
+    updated[pi].bullets[bi] = value ?? "";
     setItems(updated);
   };
 
@@ -63,18 +74,19 @@ export default function StepProjects({ data, update, next, back }) {
 
       const result = await generateProjectPointsAPI(project);
 
-      const bullets = result
-        .split("\n")
-        .map((l) => l.replace(/^[-*\d.\)\s]+/, "").trim())
-        .filter(Boolean);
+      if (!Array.isArray(result) || result.length === 0) {
+        toast.error("AI did not return valid points");
+        return;
+      }
 
-      change(i, "bullets", bullets);
+      change(i, "bullets", result);
+      toast.success("Project points updated");
     } catch (err) {
-      alert("AI Error");
       console.log(err);
+      toast.error("AI Error");
+    } finally {
+      setLoadingIndex(null);
     }
-
-    setLoadingIndex(null);
   };
 
   const save = () => {
@@ -92,83 +104,73 @@ export default function StepProjects({ data, update, next, back }) {
       {items.map((p, i) => (
         <div
           key={i}
-          className="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-3xl shadow-xl p-6 space-y-4 mb-6"
+          className="bg-white/80 border border-gray-200 rounded-3xl shadow p-6 mb-6 space-y-4"
         >
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 text-lg">
+            <h3 className="text-lg font-semibold text-gray-800">
               Project #{i + 1}
             </h3>
 
             <button
               onClick={() => remove(i)}
-              className="text-red-500 hover:bg-red-100 p-2 rounded-xl transition"
+              className="text-red-600 hover:bg-red-100 p-2 rounded-xl transition"
             >
               <TrashIcon className="w-5" />
             </button>
           </div>
 
-          {/* TITLE */}
           <div>
             <label className="text-sm text-gray-600 font-medium">
               Project Title
             </label>
             <input
-              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300 
-              focus:ring-2 focus:ring-purple-500 outline-none transition"
-              placeholder="Project..."
-              value={p.title}
+              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300"
+              placeholder="Project title..."
+              value={p.title || ""}
               onChange={(e) => change(i, "title", e.target.value)}
             />
           </div>
 
-          {/* TECH */}
           <div>
             <label className="text-sm text-gray-600 font-medium">
               Technologies (comma separated)
             </label>
             <input
-              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300
-              focus:ring-2 focus:ring-purple-500 outline-none transition"
-              placeholder="Ex: Java, Spring, MySQL"
-              value={p.tech}
+              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300"
+              placeholder="Ex: Java, React, MySQL"
+              value={p.tech || ""}
               onChange={(e) => change(i, "tech", e.target.value)}
             />
           </div>
 
-          {/* DESCRIPTION */}
           <div>
             <label className="text-sm text-gray-600 font-medium">
               Description
             </label>
             <textarea
-              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300 h-24
-              focus:ring-2 focus:ring-purple-500 outline-none transition"
-              placeholder="Short description of the project..."
-              value={p.description}
+              className="w-full mt-1 p-3 rounded-xl bg-gray-50 border border-gray-300 h-24"
+              placeholder="Project description..."
+              value={p.description || ""}
               onChange={(e) => change(i, "description", e.target.value)}
             />
           </div>
 
-          {/* AI GENERATE */}
           <button
             onClick={() => generateAI(i)}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-purple-100 text-purple-700 
-            hover:bg-purple-200 transition font-medium"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-purple-600 text-white"
             disabled={loadingIndex === i}
           >
             <SparklesIcon className="w-5" />
             {loadingIndex === i ? "Generating..." : "Generate Bullet Points"}
           </button>
 
-          {/* BULLETS — Editable like summary */}
           <div className="space-y-3 mt-4">
             {p.bullets?.map((b, bi) => (
               <div key={bi} className="flex gap-2 items-start">
                 <textarea
-                  value={b}
+                  value={b || ""}
                   onChange={(e) => changeBullet(i, bi, e.target.value)}
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl
-                  focus:ring-2 focus:ring-purple-500 outline-none transition"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl"
                   rows={2}
                 />
 
@@ -183,7 +185,7 @@ export default function StepProjects({ data, update, next, back }) {
 
             <button
               onClick={() => addBullet(i)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200"
             >
               + Add Bullet
             </button>
@@ -191,10 +193,9 @@ export default function StepProjects({ data, update, next, back }) {
         </div>
       ))}
 
-      {/* ADD PROJECT */}
       <button
         onClick={add}
-        className="flex items-center gap-2 px-5 py-3 mb-8 rounded-xl bg-purple-100 text-purple-700 font-medium hover:bg-purple-200 transition"
+        className="flex items-center gap-2 px-5 py-3 mb-8 rounded-xl bg-purple-100 text-purple-700"
       >
         <PlusIcon className="w-5" />
         Add Project
@@ -203,21 +204,21 @@ export default function StepProjects({ data, update, next, back }) {
       <div className="flex justify-between items-center">
         <button
           onClick={back}
-          className="px-6 py-2 rounded-xl bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition"
+          className="px-6 py-2 rounded-xl bg-gray-200 hover:bg-gray-300"
         >
           ← Back
         </button>
 
         <button
           onClick={next}
-          className="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-medium hover:bg-gray-400 transition"
+          className="px-6 py-2 rounded-xl bg-gray-300 hover:bg-gray-400"
         >
           Skip →
         </button>
 
         <button
           onClick={save}
-          className="px-8 py-2 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 shadow-md transition"
+          className="px-8 py-2 rounded-xl bg-purple-600 text-white"
         >
           Next →
         </button>

@@ -2,7 +2,7 @@ import api from "./axios";
 
 export const generateSummaryAPI = async (about) => {
   const res = await api.post("/api/ai/summary", { about });
-  return res.data.summary;
+  return res.data.summaries;
 };
 
 export const generateProjectPointsAPI = async (projectObject) => {
@@ -13,9 +13,6 @@ export const generateProjectPointsAPI = async (projectObject) => {
 };
 
 export const checkATSScoreAPI = async (resumeText, jobDescription) => {
-  const res = await api.post("/api/ai/ats-score", {
-    resumeText,
-    jobDescription,
-  });
+  const res = await api.post("/ats/check", { resumeText, jobDescription });
   return res.data;
 };

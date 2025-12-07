@@ -2,13 +2,12 @@ export default function MinimalTemplate({ resume }) {
   const p = resume.personalInfo || {};
 
   return (
-    <div id="resume-preview" className="bg-white p-6 shadow rounded">
+    <div className="bg-white p-6 shadow rounded" id="resume-preview">
       {p.fullName && <h1 className="text-3xl font-bold">{p.fullName}</h1>}
 
       {(p.email || p.phone || p.location) && (
         <p className="text-gray-600 mt-1">
-          {p.email} {p.phone && " • " + p.phone}{" "}
-          {p.location && " • " + p.location}
+          {[p.email, p.phone, p.location].filter(Boolean).join(" • ")}
         </p>
       )}
 
@@ -30,7 +29,7 @@ export default function MinimalTemplate({ resume }) {
               <strong>{e.role}</strong>
               <div>{e.company}</div>
               <div className="text-sm text-gray-600">
-                {e.startDate} - {e.endDate}
+                {(e.startDate || "") + " - " + (e.endDate || "")}
               </div>
               <p className="mt-1">{e.description}</p>
             </div>
@@ -47,10 +46,24 @@ export default function MinimalTemplate({ resume }) {
               <strong>{p.title}</strong>
               <div className="text-sm">{p.tech}</div>
               <p className="mt-1">{p.description}</p>
+
               {p.bullets?.length > 0 && (
-                <ul className="list-disc ml-6 mt-1">
+                <ul className="list-disc ml-6 mt-1 space-y-1">
                   {p.bullets.map((b, x) => (
-                    <li key={x}>{b}</li>
+                    <li key={x}>
+                      {typeof b === "string" ? (
+                        b
+                      ) : (
+                        <>
+                          <strong>{b.title || ""}</strong>
+                          {b.details && (
+                            <p className="ml-4 text-sm text-gray-700">
+                              {b.details}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -63,7 +76,7 @@ export default function MinimalTemplate({ resume }) {
       {resume.skills?.length > 0 && (
         <>
           <h2 className="font-semibold text-lg">Skills</h2>
-          <p className="text-gray-700">{resume.skills.join(" • ")}</p>
+          <p>{resume.skills.join(" • ")}</p>
           <hr className="my-4" />
         </>
       )}
@@ -71,27 +84,31 @@ export default function MinimalTemplate({ resume }) {
       {resume.education?.length > 0 && (
         <>
           <h2 className="font-semibold text-lg">Education</h2>
-          {resume.education.map((e, i) => (
-            <div key={i} className="mt-1">
-              <strong>{e.degree}</strong>
-              <div>{e.school}</div>
-              <div className="text-sm">
-                {e.startDate} - {e.endDate}
-              </div>
-            </div>
-          ))}
-          <hr className="my-4" />
-        </>
-      )}
 
-      {resume.achievements?.length > 0 && (
-        <>
-          <h2 className="font-semibold text-lg">Achievements</h2>
-          <ul className="list-disc ml-6">
-            {resume.achievements.map((a, i) => (
-              <li key={i}>{a}</li>
-            ))}
-          </ul>
+          {resume.education.map((e, i) => {
+            const degree = e.degree || e.title || "";
+            const school = e.school || e.institute || e.university || "";
+            const start = e.startDate || e.start || "";
+            const end = e.endDate || e.end || "";
+            const year = e.year || e.duration || "";
+
+            return (
+              <div key={i} className="mt-1">
+                <strong>{degree}</strong>
+                <div>{school}</div>
+
+                <div className="text-sm text-gray-600">
+                  {year ? year : [start, end].filter(Boolean).join(" - ")}
+                </div>
+
+                {e.details && (
+                  <p className="text-sm text-gray-700 mt-1">{e.details}</p>
+                )}
+              </div>
+            );
+          })}
+
+          <hr className="my-4" />
         </>
       )}
     </div>

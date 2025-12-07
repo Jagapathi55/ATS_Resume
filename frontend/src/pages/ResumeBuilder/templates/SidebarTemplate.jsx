@@ -3,11 +3,15 @@ export default function SidebarTemplate({ resume }) {
 
   return (
     <div id="resume-preview" className="flex bg-white">
+      {/* LEFT SIDEBAR */}
       <div className="w-1/3 bg-gray-100 p-6">
-        <h1 className="text-3xl font-bold">{p.fullName}</h1>
-        <p className="text-gray-700 mt-2">{p.email}</p>
-        <p className="text-gray-700">{p.phone}</p>
-        <p className="text-gray-700">{p.location}</p>
+        {p.fullName && <h1 className="text-3xl font-bold">{p.fullName}</h1>}
+
+        {(p.email || p.phone || p.location) && (
+          <p className="text-gray-700 mt-2">
+            {[p.email, p.phone, p.location].filter(Boolean).join(" • ")}
+          </p>
+        )}
 
         {resume.skills?.length > 0 && (
           <div className="mt-6">
@@ -27,12 +31,16 @@ export default function SidebarTemplate({ resume }) {
               <div key={i} className="mt-2 text-gray-700">
                 <strong>{e.degree}</strong>
                 <div>{e.school}</div>
+                <div className="text-sm">
+                  {(e.startDate || "") + " – " + (e.endDate || "")}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* RIGHT SECTION */}
       <div className="w-2/3 p-8">
         {resume.summary && (
           <>
@@ -50,7 +58,7 @@ export default function SidebarTemplate({ resume }) {
                 <strong>{e.role}</strong>
                 <div>{e.company}</div>
                 <div className="text-sm text-gray-500">
-                  {e.startDate} – {e.endDate}
+                  {(e.startDate || "") + " – " + (e.endDate || "")}
                 </div>
                 <p className="mt-1">{e.description}</p>
               </div>
@@ -66,10 +74,25 @@ export default function SidebarTemplate({ resume }) {
               <div key={i} className="mt-3">
                 <strong>{p.title}</strong>
                 <div className="text-gray-600">{p.tech}</div>
+                <p className="mt-1">{p.description}</p>
+
                 {p.bullets?.length > 0 && (
-                  <ul className="list-disc ml-6 mt-2">
+                  <ul className="list-disc ml-6 mt-2 space-y-1">
                     {p.bullets.map((b, x) => (
-                      <li key={x}>{b}</li>
+                      <li key={x}>
+                        {typeof b === "string" ? (
+                          b
+                        ) : (
+                          <>
+                            <strong>{b.title || ""}</strong>
+                            {b.details && (
+                              <p className="ml-4 text-sm text-gray-700">
+                                {b.details}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 )}
